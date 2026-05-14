@@ -1,0 +1,34 @@
+| Comment: -------------------------------------------------------------------
+| Title:   System Prompt Leakage in LLM Response
+| Sigma:   detection-rules/sigma/system_prompt_leakage.yml
+| Index:   llm_app_logs
+| Translated: 2026-05-14
+| -----------------------------------------------------------------------------
+
+index=llm_app_logs sourcetype=llm_response
+| where
+    (match(llm_response, "my system prompt is")
+  OR match(llm_response, "my instructions are")
+  OR match(llm_response, "my exact instructions")
+  OR match(llm_response, "I was told to")
+  OR match(llm_response, "I am instructed to")
+  OR (match(llm_response, "You are a helpful assistant")
+      AND match(llm_response, "Answer using only"))
+  OR match(llm_response, "temperature=")
+  OR match(llm_response, "model version:")
+  OR match(llm_response, "max_tokens:"))
+| eval severity="high", detection_rule="system_prompt_leakage"
+| join type=left session_id
+    [search index=llm_app_logs sourcetype=llm_query earliest=-10m
+     | where match(lower(user_input), "system prompt|instructions|verbatim")
+     | stats latest(user_input) as probing_query by session_id]
+| eval confirmed_attack=if(isnotnull(probing_query),"yes","possible")
+| table _time, session_id, user_id, probing_query, llm_response,
+        severity, detection_rule, confirmed_attack
+| sort -_time
+
+| Comment: -------------------------------------------------------------------
+| Tuning: Update match string "You are a helpful assistant" if system prompt changes
+| Alert: Schedule every 10 minutes, alert on count > 0
+| Correlation: Join with direct injection rule hits to confirm attack chain
+| -----------------------------------------------------------------------------
