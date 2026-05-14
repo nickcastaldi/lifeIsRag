@@ -1,4 +1,4 @@
-# A detection engineers perspective on how to defend against adversarial ML.
+# Detection engineers perspective on how to defend against adversarial ML.
 
 ---
 
