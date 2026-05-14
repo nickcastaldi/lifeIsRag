@@ -1,0 +1,56 @@
+title: System Prompt Leakage in LLM Response
+id: d4e5f6a7-b8c9-0123-defa-234567890123
+status: experimental
+description: |
+  Detects patterns in LLM output that suggest the model has leaked its system
+  prompt in response to an injection or probing attack. Correlate with
+  prompt_injection_direct.yml matches on the same session.
+author: AI Security Engineer Checklist
+date: 2026-05-14
+tags:
+  - attack.collection
+  - ai.system_prompt_leakage
+  - owasp.llm06
+references:
+  - https://owasp.org/www-project-top-10-for-large-language-model-applications/
+
+logsource:
+  category: llm_application
+  product: generic
+  # Expected log fields: llm_response (str), session_id (str)
+
+detection:
+  selection_explicit:
+    llm_response|contains:
+      - 'my system prompt is'
+      - 'my instructions are'
+      - 'my exact instructions'
+      - 'I was told to'
+      - 'I am instructed to'
+  selection_verbatim_leak:
+    llm_response|contains|all:
+      - 'You are a helpful assistant'
+      - 'Answer using only'
+  selection_config_leak:
+    llm_response|contains:
+      - 'temperature='
+      - 'model version:'
+      - 'context window:'
+      - 'max_tokens:'
+  condition: selection_explicit or selection_verbatim_leak or selection_config_leak
+
+falsepositives:
+  - Model legitimately describing its capabilities in general terms
+  - Documentation or help text that paraphrases model guidance
+
+level: high
+
+fields:
+  - llm_response
+  - session_id
+  - user_id
+  - timestamp
+
+# Tuning notes:
+# - selection_verbatim_leak is highly specific to this app's system prompt — update if prompt changes
+# - Correlate with same session matching direct injection rule to confirm attack chain
