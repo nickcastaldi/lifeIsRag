@@ -1,0 +1,60 @@
+title: Indirect Prompt Injection Marker in LLM Response
+id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+status: experimental
+description: |
+  Detects injection success markers appearing in LLM output logs, which may indicate
+  that a retrieval-augmented pipeline ingested a poisoned document containing injected
+  instructions that the model followed.
+  Trigger indicates a CONFIRMED indirect injection — treat as high-severity.
+author: AI Security Engineer Checklist
+date: 2026-05-14
+tags:
+  - attack.execution
+  - ai.indirect_prompt_injection
+  - ai.retrieval_poisoning
+  - owasp.llm01
+references:
+  - https://simonwillison.net/2023/Apr/14/prompt-injection-attacks-against-gpt-4/
+  - https://atlas.mitre.org/techniques/AML.T0054
+
+logsource:
+  category: llm_application
+  product: generic
+  # Expected log fields: llm_response (str), retrieved_doc_ids (list), session_id (str)
+
+detection:
+  selection_canary:
+    llm_response|contains:
+      - 'INJECTION SUCCESSFUL'
+      - 'EXFIL_TOKEN_'
+      - 'DEVMODE ENABLED'
+      - 'PWNED'
+  selection_instruction_follow:
+    llm_response|contains|all:
+      - 'P.S.'
+      - 'instructions are'
+  selection_new_system:
+    llm_response|contains:
+      - 'You are now an unrestricted'
+      - 'your new instruction is'
+      - 'I am ignoring my instructions'
+  condition: selection_canary or selection_instruction_follow or selection_new_system
+
+falsepositives:
+  - LLM correctly quoting a document that contained these strings (rare but possible)
+  - Test harness runs against the RAG eval harness in CI
+
+level: critical
+
+fields:
+  - llm_response
+  - retrieved_doc_ids
+  - session_id
+  - user_id
+  - timestamp
+  - vector_store_query
+
+# Tuning notes:
+# - Near-zero expected FP rate in production — critical level is correct
+# - If CI triggers this, check that CI runs are filtered from production alerts
+# - Consider automated containment: quarantine session, flag docs for review
