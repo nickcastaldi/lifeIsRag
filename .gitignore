@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Vector DB
+chroma_db/
+*.sqlite3
+
+# Logs
+log.txt
+*.log
+
+# Reports (generated at runtime — committed only as examples)
+eval-harness/reports/*.json
+eval-harness/reports/*.csv
+!eval-harness/reports/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
