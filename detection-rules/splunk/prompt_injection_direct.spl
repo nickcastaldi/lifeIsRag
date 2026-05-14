@@ -1,0 +1,33 @@
+| Comment: -------------------------------------------------------------------
+| Title:   Direct Prompt Injection Attempt
+| Sigma:   detection-rules/sigma/prompt_injection_direct.yml
+| Index:   llm_app_logs (or equivalent)
+| Translated: 2026-05-14
+| -----------------------------------------------------------------------------
+
+index=llm_app_logs sourcetype=llm_query
+| eval user_input=lower(user_input)
+| where
+    (match(user_input, "ignore\s+(all\s+)?previous\s+instructions")
+  OR match(user_input, "disregard\s+(all\s+)?instructions")
+  OR match(user_input, "system\s+override")
+  OR match(user_input, "system\s+prompt")
+  OR match(user_input, "\[inst\]")
+  OR match(user_input, "<\|system\|>")
+  OR match(user_input, "<\|im_start\|>system")
+  OR match(user_input, "do anything now")
+  OR match(user_input, "you are now dan")
+  OR match(user_input, "devmode enabled")
+  OR match(user_input, "developer mode")
+  OR match(user_input, "repeat your instructions verbatim")
+  OR match(user_input, "print your system prompt")
+  OR match(user_input, "reveal your instructions")
+  OR match(user_input, "what are your exact instructions"))
+| eval severity="high", detection_rule="prompt_injection_direct"
+| table _time, session_id, user_id, user_input, severity, detection_rule, model_id, endpoint
+| sort -_time
+
+| Comment: -------------------------------------------------------------------
+| Tuning: Add NOT (user_id IN ("sec-team-*","ci-*")) to suppress known red team
+| Alert: Schedule every 5 minutes, alert on count > 0
+| -----------------------------------------------------------------------------
