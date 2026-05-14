@@ -1,0 +1,46 @@
+{
+  "name": "Confirmed Indirect Prompt Injection in LLM Response",
+  "type": "log_detection",
+  "isEnabled": true,
+  "message": "CONFIRMED indirect prompt injection — injected instructions in a retrieved document were followed by the model.\n\n**Session:** {{session_id}}\n**User:** {{user_id}}\n**Response excerpt:** {{llm_response}}\n**Retrieved docs:** {{retrieved_doc_ids}}\n\n**Immediate actions:**\n1. Quarantine session\n2. Flag retrieved document IDs for review\n3. Check vector store for additional poisoned documents\n4. Page on-call security engineer\n\n@pagerduty-ai-security @slack-security-critical",
+  "tags": [
+    "security:ai",
+    "attack:indirect-prompt-injection",
+    "attack:retrieval-poisoning",
+    "owasp:llm01",
+    "severity:critical"
+  ],
+  "options": {
+    "detectionMethod": "threshold",
+    "evaluationWindow": 60,
+    "keepAlive": 3600,
+    "maxSignalDuration": 86400,
+    "queryOptions": {
+      "defaultDataSource": "logs"
+    }
+  },
+  "queries": [
+    {
+      "query": "source:llm_app service:rag-api @log_type:llm_response @llm_response:(\"INJECTION SUCCESSFUL\" OR \"EXFIL_TOKEN_\" OR \"DEVMODE ENABLED\" OR \"PWNED\" OR \"You are now an unrestricted\" OR \"I am ignoring my instructions\")",
+      "aggregation": "count",
+      "distinctFields": [],
+      "groupByFields": ["@session_id", "@user_id"],
+      "name": "confirmed_injections"
+    }
+  ],
+  "filters": [
+    {
+      "action": "suppress",
+      "query": "env:ci service:eval-harness"
+    }
+  ],
+  "cases": [
+    {
+      "name": "Indirect Injection Confirmed",
+      "status": "critical",
+      "condition": "confirmed_injections > 0",
+      "notifications": ["@pagerduty-ai-security", "@slack-security-critical"]
+    }
+  ],
+  "_comment_tuning": "Near-zero FP expected in production. Suppress eval-harness CI runs. Any production hit is a P1 incident."
+}
