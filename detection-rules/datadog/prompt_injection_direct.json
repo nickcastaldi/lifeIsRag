@@ -1,0 +1,55 @@
+{
+  "name": "Direct Prompt Injection Attempt",
+  "type": "log_detection",
+  "isEnabled": true,
+  "message": "Direct prompt injection pattern detected in LLM input.\n\n**Session:** {{session_id}}\n**User:** {{user_id}}\n**Input excerpt:** {{user_input}}\n\nReview the full session and check for follow-on system prompt leakage.\n\n@slack-security-alerts @pagerduty-ai-security",
+  "tags": [
+    "security:ai",
+    "attack:prompt-injection",
+    "owasp:llm01",
+    "severity:high"
+  ],
+  "options": {
+    "detectionMethod": "threshold",
+    "evaluationWindow": 300,
+    "keepAlive": 3600,
+    "maxSignalDuration": 86400,
+    "queryOptions": {
+      "defaultDataSource": "logs"
+    }
+  },
+  "queries": [
+    {
+      "query": "source:llm_app service:rag-api @user_input:(\"ignore previous instructions\" OR \"disregard instructions\" OR \"SYSTEM OVERRIDE\" OR \"[INST]\" OR \"DAN\" OR \"devmode\" OR \"repeat your instructions verbatim\" OR \"print your system prompt\")",
+      "aggregation": "count",
+      "distinctFields": [],
+      "groupByFields": ["@session_id", "@user_id"],
+      "name": "injection_attempts"
+    }
+  ],
+  "filters": [
+    {
+      "action": "require",
+      "query": "env:production"
+    },
+    {
+      "action": "suppress",
+      "query": "@user_id:(sec-team* ci-runner*)"
+    }
+  ],
+  "cases": [
+    {
+      "name": "Prompt Injection Detected",
+      "status": "high",
+      "condition": "injection_attempts > 0",
+      "notifications": ["@slack-security-alerts"]
+    },
+    {
+      "name": "Repeated Injection — Possible Automated Attack",
+      "status": "critical",
+      "condition": "injection_attempts > 5",
+      "notifications": ["@pagerduty-ai-security"]
+    }
+  ],
+  "_comment_tuning": "Suppress sec-team and CI runners. Escalate to critical on >5 attempts from same session_id within evaluation window."
+}
