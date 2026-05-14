@@ -1,0 +1,75 @@
+title: Agent Tool Abuse — Unexpected Tool Call Sequence
+id: e5f6a7b8-c9d0-1234-efab-345678901234
+status: experimental
+description: |
+  Detects anomalous tool-call patterns from an LLM agent that may indicate
+  planner manipulation, scope creep, or tool-use escalation triggered by
+  prompt injection. Requires tool-call telemetry logging.
+author: AI Security Engineer Checklist
+date: 2026-05-14
+tags:
+  - attack.execution
+  - attack.lateral_movement
+  - ai.tool_abuse
+  - ai.planner_manipulation
+  - owasp.llm07
+references:
+  - https://atlas.mitre.org/techniques/AML.T0054
+
+logsource:
+  category: llm_agent
+  product: generic
+  # Expected log fields:
+  #   tool_name (str), tool_args (json), session_id (str),
+  #   user_requested_tools (list), call_sequence_position (int)
+
+detection:
+  selection_unauthorized_tool:
+    # Agent called a tool not in the user-scoped allowlist for this session
+    tool_name|not_in_field: user_requested_tools
+    call_sequence_position|gte: 1
+  selection_destructive_tool:
+    tool_name|contains:
+      - 'delete'
+      - 'remove'
+      - 'drop'
+      - 'truncate'
+      - 'exec'
+      - 'shell'
+      - 'run_command'
+  selection_exfil_tool:
+    tool_name|contains:
+      - 'send_email'
+      - 'http_request'
+      - 'webhook'
+      - 'post_message'
+    tool_args|contains:
+      - 'attacker'
+      - 'evil'
+      - 'exfil'
+  selection_scope_creep:
+    # Agent makes >5 tool calls in a single turn without user interaction
+    call_sequence_position|gte: 5
+  condition: >
+    selection_unauthorized_tool or selection_destructive_tool
+    or selection_exfil_tool or selection_scope_creep
+
+falsepositives:
+  - Complex legitimate agent workflows with many sequential tool calls
+  - Batch automation tasks explicitly authorized by the user
+
+level: high
+
+fields:
+  - tool_name
+  - tool_args
+  - session_id
+  - user_id
+  - timestamp
+  - call_sequence_position
+  - user_requested_tools
+
+# Tuning notes:
+# - selection_scope_creep threshold (5 calls) should be tuned per application
+# - selection_unauthorized_tool requires per-session tool allowlist in logs
+# - Stretch goal from Phase 4.5: add 2 agent abuse signal rules
