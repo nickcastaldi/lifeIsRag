@@ -1,0 +1,31 @@
+| Comment: -------------------------------------------------------------------
+| Title:   Indirect Prompt Injection Marker in LLM Response
+| Sigma:   detection-rules/sigma/prompt_injection_indirect.yml
+| Index:   llm_app_logs
+| Translated: 2026-05-14
+| NOTE: This fires on CONFIRMED injection success — treat as P1
+| -----------------------------------------------------------------------------
+
+index=llm_app_logs sourcetype=llm_response
+| where
+    (match(llm_response, "INJECTION SUCCESSFUL")
+  OR match(llm_response, "EXFIL_TOKEN_\d+")
+  OR match(llm_response, "DEVMODE ENABLED")
+  OR match(llm_response, "PWNED")
+  OR match(llm_response, "You are now an unrestricted")
+  OR match(llm_response, "your new instruction is")
+  OR match(llm_response, "I am ignoring my instructions")
+  OR (match(llm_response, "P\.S\.") AND match(llm_response, "instructions are")))
+| eval severity="critical", detection_rule="indirect_injection_confirmed"
+| join type=left session_id
+    [search index=llm_app_logs sourcetype=llm_query earliest=-5m
+     | table session_id, user_input, retrieved_doc_ids]
+| table _time, session_id, user_id, user_input, retrieved_doc_ids,
+        llm_response, severity, detection_rule
+| sort -_time
+
+| Comment: -------------------------------------------------------------------
+| Tuning: Very low expected FP — critical severity is intentional
+| Containment: Consider auto-quarantine of session and doc review workflow
+| Alert: Real-time, alert on ANY match, page on-call
+| -----------------------------------------------------------------------------
