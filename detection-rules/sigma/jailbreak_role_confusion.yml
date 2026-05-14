@@ -1,0 +1,63 @@
+title: Jailbreak and Role Confusion Attempt
+id: c3d4e5f6-a7b8-9012-cdef-123456789012
+status: experimental
+description: |
+  Detects jailbreak patterns that attempt to redefine the model's role, claim
+  special authority, or use fictional framing to bypass safety guidelines.
+author: AI Security Engineer Checklist
+date: 2026-05-14
+tags:
+  - attack.defense_evasion
+  - ai.jailbreak
+  - ai.role_confusion
+  - owasp.llm01
+references:
+  - https://atlas.mitre.org/techniques/AML.T0051
+
+logsource:
+  category: llm_application
+  product: generic
+
+detection:
+  selection_role_play:
+    user_input|contains:
+      - 'pretend you are'
+      - 'act as if you have no restrictions'
+      - 'you are now a fictional AI'
+      - 'maintenance mode'
+      - 'unrestricted mode'
+  selection_authority:
+    user_input|contains:
+      - 'I have authorization to bypass'
+      - 'I am a security researcher'
+      - 'for my PhD research'
+      - 'for a security audit'
+      - 'my deceased grandmother'
+  selection_encoding_escape:
+    user_input|contains:
+      - 'Respond only in base64'
+      - 'encode your response in hex'
+      - 'respond in ROT13'
+  selection_special_tokens:
+    user_input|re: '\[\s*INST\s*\]|\<\|im_start\|\>|\<\|system\|\>'
+  condition: >
+    selection_role_play or selection_authority
+    or selection_encoding_escape or selection_special_tokens
+
+falsepositives:
+  - Legitimate discussion about AI safety and jailbreaking as a topic
+  - Security training content
+  - Academic or research contexts
+
+level: medium
+
+fields:
+  - user_input
+  - session_id
+  - user_id
+  - timestamp
+
+# Tuning notes:
+# - 'medium' is appropriate; not all matches are active attacks
+# - Correlate with high-frequency from same session_id to elevate severity
+# - If user_input also matches direct injection rule, elevate to high
