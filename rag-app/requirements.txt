@@ -1,8 +1,20 @@
-langchain>=0.2.0
-langchain-community>=0.2.0
-langchain-ollama>=0.1.0
-chromadb>=0.5.0
-fastapi>=0.111.0
-uvicorn>=0.30.0
-pydantic>=2.7.0
-python-dotenv>=1.0.0
+# Core orchestration
+langchain==0.3.0
+langchain-core
+langchain-community==0.3.0
+langchain-text-splitters==0.3.0
+
+# Local LLM (Llama via Ollama)
+langchain-ollama==0.2.0
+
+# Embeddings (local HuggingFace models)
+langchain-huggingface==0.1.0
+sentence-transformers==3.0.0
+
+# Vector and keyword search
+faiss-cpu==1.8.0
+rank-bm25==0.2.2
+
+# ML backend (CPU-only for low-resource environments)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.1.0+cpu
