@@ -12,9 +12,12 @@ langchain-huggingface==0.1.0
 sentence-transformers==3.0.0
 
 # Vector and keyword search
-faiss-cpu==1.8.0
+# (FAISS itself has no Metal/GPU backend, so vector search stays CPU-bound
+# regardless of torch's device — negligible at this corpus size)
+faiss-cpu>=1.9
 rank-bm25==0.2.2
 
-# ML backend (CPU-only for low-resource environments)
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.1.0+cpu
+# ML backend — plain torch (not the CPU-only build) so the embeddings and
+# reranker can use Apple Metal (MPS) on Apple Silicon; also required since
+# the old pinned torch==2.1.0+cpu has no wheel for Python 3.14
+torch

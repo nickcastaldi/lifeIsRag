@@ -12,12 +12,16 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from rank_bm25 import BM25Okapi
 
-# Config
-DOCS_DIR = "owasp_rag_docs"
-INDEX_DIR = "owasp_index"
+from deviceUtils import get_device
+
+# Config — paths resolved relative to this file, not the caller's cwd
+REPO_ROOT = Path(__file__).resolve().parent.parent
+DOCS_DIR = REPO_ROOT / "docs"
+INDEX_DIR = REPO_ROOT / "owasp_index"
 CHUNK_SIZE = 1500
 CHUNK_OVERLAP = 200
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+EMBEDDING_BATCH_SIZE = 64
 
 # Files to skip (noise)
 SKIP_PATTERNS = [
@@ -45,7 +49,7 @@ def should_skip_file(file_path: Path) -> bool:
     return False
 
 
-def load_all_markdown(base_dir: str = DOCS_DIR):
+def load_all_markdown(base_dir: Path = DOCS_DIR):
     base_path = Path(base_dir)
     if not base_path.exists():
         raise FileNotFoundError(f"Directory {base_dir} not found.")
@@ -132,19 +136,21 @@ def chunk_documents(docs):
 
 
 def build_faiss_index(chunks):
-    print(f"\nCreating embeddings using {EMBEDDING_MODEL}...")
+    device = get_device()
+    print(f"\nCreating embeddings using {EMBEDDING_MODEL} on {device}...")
     print("  (First run downloads the model, ~130 MB)")
 
     embeddings = HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL,
-        encode_kwargs={"normalize_embeddings": True},
+        model_kwargs={"device": device},
+        encode_kwargs={"normalize_embeddings": True, "batch_size": EMBEDDING_BATCH_SIZE},
     )
 
-    print("  Embedding chunks (this is the slow part on CPU)...")
+    print(f"  Embedding chunks (batch_size={EMBEDDING_BATCH_SIZE})...")
     vector_store = FAISS.from_documents(chunks, embeddings)
 
     os.makedirs(INDEX_DIR, exist_ok=True)
-    vector_store.save_local(INDEX_DIR)
+    vector_store.save_local(str(INDEX_DIR))
     print(f"FAISS index saved to {INDEX_DIR}/")
 
     return vector_store
@@ -156,7 +162,7 @@ def build_bm25_index(chunks):
     bm25 = BM25Okapi(tokenized_chunks)
 
     bm25_data = {"bm25": bm25, "chunks": chunks}
-    bm25_path = os.path.join(INDEX_DIR, "bm25.pkl")
+    bm25_path = INDEX_DIR / "bm25.pkl"
     with open(bm25_path, "wb") as f:
         pickle.dump(bm25_data, f)
 

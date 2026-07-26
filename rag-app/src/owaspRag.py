@@ -12,8 +12,12 @@ from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
 from sentence_transformers import CrossEncoder
 
-INDEX_DIR = "owasp_index"
+from deviceUtils import get_device
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+INDEX_DIR = REPO_ROOT / "owasp_index"
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+EMBEDDING_BATCH_SIZE = 64
 LLAMA_MODEL = "llama3.2:3b"
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
@@ -21,30 +25,33 @@ RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 class OWASPRagApp:
     def __init__(self):
         print("Loading OWASP RAG...")
+        device = get_device()
+        print(f"  Using device: {device}")
 
         # Load embeddings (same model used for indexing)
         embeddings = HuggingFaceEmbeddings(
             model_name=EMBEDDING_MODEL,
-            encode_kwargs={"normalize_embeddings": True},
+            model_kwargs={"device": device},
+            encode_kwargs={"normalize_embeddings": True, "batch_size": EMBEDDING_BATCH_SIZE},
         )
 
-        # Load FAISS
+        # Load FAISS (vector search itself has no Metal/GPU backend, stays CPU)
         self.vector_store = FAISS.load_local(
-            INDEX_DIR,
+            str(INDEX_DIR),
             embeddings,
             allow_dangerous_deserialization=True
         )
 
         # Load BM25 + chunks
-        bm25_path = Path(INDEX_DIR) / "bm25.pkl"
+        bm25_path = INDEX_DIR / "bm25.pkl"
         with open(bm25_path, "rb") as f:
             bm25_data = pickle.load(f)
         self.bm25 = bm25_data["bm25"]
         self.chunks = bm25_data["chunks"]
 
-        # Cross-encoder for reranking (smaller model for low-RAM)
+        # Cross-encoder for reranking
         print("Loading cross-encoder reranker...")
-        self.reranker = CrossEncoder(RERANKER_MODEL, max_length=512)
+        self.reranker = CrossEncoder(RERANKER_MODEL, max_length=512, device=device)
 
         # Llama via Ollama
         print(f"Connecting to Ollama ({LLAMA_MODEL})...")

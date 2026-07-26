@@ -22,11 +22,11 @@ This project demonstrates a security knowledge assistant that:
 
 | Component | Technology |
 |-----------|-----------|
-| Embeddings | `BAAI/bge-small-en-v1.5` (local, 130 MB) |
-| Vector store | FAISS |
+| Embeddings | `BAAI/bge-small-en-v1.5` (local, 130 MB, runs on Metal/MPS on Apple Silicon) |
+| Vector store | FAISS (CPU — no Metal/GPU backend exists for FAISS) |
 | Keyword search | BM25 (`rank-bm25`) |
 | Rank fusion | Reciprocal Rank Fusion (k=60) |
-| Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
+| Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2` (Metal/MPS on Apple Silicon) |
 | LLM | Llama 3.2 3B via Ollama |
 | Orchestration | LangChain 0.3 |
 
@@ -48,7 +48,8 @@ This project demonstrates a security knowledge assistant that:
 
 ### Prerequisites
 
-- Linux or WSL2 (tested on Ubuntu 22.04)
+- macOS (Apple Silicon — embeddings and reranking use Metal/MPS automatically)
+  or Linux/WSL2
 - Python 3.10+
 - ~10 GB free disk space
 - 8 GB+ RAM (16 GB recommended)
@@ -61,7 +62,7 @@ git clone https://github.com/nickcastaldi/lifeIsRag.git
 cd lifeIsRag/rag-app
 
 # 2. Clone the OWASP source documents
-bash scripts/clone_owasp_docs.sh
+bash scripts/cloneOwaspDocs.sh
 
 # 3. Install Python dependencies
 python3 -m venv venv
@@ -73,11 +74,11 @@ curl -fsSL https://ollama.com/install.sh | sh
 ollama pull llama3.2:3b
 ollama serve &
 
-# 5. Build the index (one-time, ~15-30 minutes on CPU)
-python build_index.py
+# 5. Build the index (one-time; minutes on Apple Silicon GPU, ~15-30 min on CPU)
+python src/buildIndex.py
 
 # 6. Start querying
-python query.py
+python src/query.py
 ```
 
 ---

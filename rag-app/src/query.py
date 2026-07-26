@@ -1,5 +1,5 @@
 """Interactive CLI for OWASP RAG."""
-from rag-app import owaspRag
+from owaspRag import OWASPRagApp
 
 
 def main():
