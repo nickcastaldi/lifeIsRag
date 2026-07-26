@@ -1,6 +1,11 @@
 """
 OWASP RAG with hybrid search, reranking, and local Llama.
 """
+# faiss must be imported before torch/transformers — on macOS, loading
+# faiss's native library *after* PyTorch has touched MPS causes a hard
+# segfault (native OpenMP/library init conflict), not a Python exception.
+import faiss  # noqa: F401  (import order matters, not usage)
+
 import os
 import pickle
 import numpy as np

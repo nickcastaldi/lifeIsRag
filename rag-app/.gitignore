@@ -74,6 +74,9 @@ docs/_build/
 # OWASP corpus fetched by scripts/cloneOwaspDocs.sh — regenerate, don't commit
 docs/*
 
+# Built FAISS + BM25 index — regenerate via src/buildIndex.py, don't commit
+owasp_index/
+
 # PyBuilder
 .pybuilder/
 target/

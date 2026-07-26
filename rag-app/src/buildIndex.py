@@ -3,6 +3,11 @@ Build OWASP RAG index from cloned GitHub repos.
 Run once after cloning. Re-run to refresh after pulling repo updates.
 Uses local embeddings (no API keys needed).
 """
+# faiss must be imported before torch/transformers — on macOS, loading
+# faiss's native library *after* PyTorch has touched MPS causes a hard
+# segfault (native OpenMP/library init conflict), not a Python exception.
+import faiss  # noqa: F401  (import order matters, not usage)
+
 import os
 import pickle
 from pathlib import Path
