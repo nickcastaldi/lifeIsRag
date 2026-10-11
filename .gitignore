@@ -22,11 +22,6 @@ chroma_db/
 log.txt
 *.log
 
-# Reports (generated at runtime — committed only as examples)
-eval-harness/reports/*.json
-eval-harness/reports/*.csv
-!eval-harness/reports/.gitkeep
-
 # OS
 .DS_Store
 Thumbs.db
